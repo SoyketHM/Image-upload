@@ -87,31 +87,27 @@ const resizes = async (req, res, next) => {
         next();
         return;
     }
+    let photoName = [];
     req.files.forEach(async p => {
-        console.log(p);
         const extension = p.mimetype.split('/')[1];
-        req.body.photos =`${uuid.v4()}.${extension}`;
-        console.log(req.body.photos);
+        let photourl = `${uuid.v4()}.${extension}`;
+        photoName.push(`${uuid.v4()}.${extension}`);
+        req.body.photos = photoName;
         const [perr, photo] = await _p(jimp.read(p.buffer));
-        console.log(p.buffer);
+        if (!perr) {
+            if( photo.bitmap.width > 400 ) {
+                photo.resize(400, jimp.AUTO);
+                photo.quality(60);
+                photo.write(`./images/${photourl}`);
+                next();
+            }
+            photo.write(`./images/${photourl}`);
+            next();
+        }
+        else {
+            return reject(perr.message);
+        }
     });
-
-    // console.log(req.body.photos);
-    // const extension = req.files.mimetype.split('/')[1];
-    // req.body.photos = `${uuid.v4()}.${extension}`;
-    // const [perr, photo] = await _p(jimp.read(req.file.buffer));
-    // if (!perr) {
-    //     if( photo.bitmap.width > 400 ) {
-    //         photo.resize(400, jimp.AUTO);
-    //         photo.quality(60);
-    //         photo.write(`./images/${req.body.photo}`);
-    //         next();
-    //     }
-    //     photo.write(`./images/${req.body.photo}`);
-    //     next();
-    // } else {
-    //     return reject(perr.message);
-    // }
 };
 
 //get
@@ -150,22 +146,22 @@ app.post('/profile', upload.single('photo'), resize, (req, res) => {
 });
 
 // upload multiple image
-app.post('/photos', uploads.array('photos', 2), (req, res) => {
-console.log(req.files);
+app.post('/photos', upload.array('photos', 2), resizes, (req, res) => {
+console.log(req.body);
     const photoExist = photoUrls.find( p => p.id ===  req.body.id);
-    const photos = [];
-    req.files.forEach(e => photos.push(e.path));
+    // const photos = [];
+    // req.files.forEach(e => photos.push(e.path));
     if (!photoExist) {
         const data = {
             id: req.body.id,
-            photos: photos
+            photos: req.body.photos
         };
         photoUrls.push(data);
         res.send({'message': 'File uploaded successfully', data});
     }else{
         const id = photoExist.id;
         const pindex = photoUrls.findIndex(p => p.id === id);
-        photoUrls[pindex].photo = photos;
+        photoUrls[pindex].photo = req.body.photos;
         res.json({message: 'photo exist', photoUrls });
     }
 });
