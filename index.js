@@ -2,6 +2,7 @@ const express   = require('express');
 const multer    = require('multer');
 const jimp      = require('jimp');
 const uuid      = require('uuid');
+const fs        = require('fs');
 const _p 		= require('./simpleasync');
 const app       = express();
 const port      = 5000;
@@ -91,7 +92,8 @@ const resizes = async (req, res, next) => {
     req.files.forEach(async p => {
         const extension = p.mimetype.split('/')[1];
         let photourl = `${uuid.v4()}.${extension}`;
-        photoName.push(`${uuid.v4()}.${extension}`);
+        photoName.push(photourl);
+        console.log(photoName);
         req.body.photos = photoName;
         const [perr, photo] = await _p(jimp.read(p.buffer));
         if (!perr) {
@@ -128,14 +130,13 @@ app.get('/:id', (req, res) => {
 // upload single image
 app.post('/profile', upload.single('photo'), resize, (req, res) => {
     const photoExist = photoUrl.find( p => p.id ===  req.body.id);
-    console.log(req.file);
     if (!photoExist) {
         const data = {
             id: req.body.id,
             photo: req.body.photo
         };
         photoUrl.push(data);
-        res.send(photoExist);
+        res.send({'message': 'File uploaded successfully', data});
     }else{
         const id = photoExist.id;
         const pindex = photoUrl.findIndex(p => p.id === id);
@@ -147,10 +148,7 @@ app.post('/profile', upload.single('photo'), resize, (req, res) => {
 
 // upload multiple image
 app.post('/photos', upload.array('photos', 2), resizes, (req, res) => {
-console.log(req.body);
     const photoExist = photoUrls.find( p => p.id ===  req.body.id);
-    // const photos = [];
-    // req.files.forEach(e => photos.push(e.path));
     if (!photoExist) {
         const data = {
             id: req.body.id,
@@ -166,5 +164,18 @@ console.log(req.body);
     }
 });
 
+//delete image by id
+app.delete('/photo/:image', (req, res) => {
+    const path = `./images/${req.params.image}`;
+
+    fs.unlink(path, (err) => {
+        if (err) {
+            console.error(err);
+            // throw err;
+            return
+        }
+        res.send({'message': 'File delete successfully'});
+    })
+});
 
 app.listen(port, () => console.log(`server listening on port ${port}...`));
