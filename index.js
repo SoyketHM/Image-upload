@@ -8,33 +8,9 @@ const app       = express();
 const port      = 5000;
 
 const storage = multer.memoryStorage();
-const store = multer.diskStorage({
-    destination: function (req, file, callback) {
-        callback(null, './images');
-    },
-    filename: function (req, file, callback) {
-        callback(null, file.fieldname + '-' + Date.now());
-    }
-});
 
 const upload = multer({
     storage: storage,
-    limits: {fileSize: 1000000},
-    fileFilter: function (req, file, cb) {
-        const fileExts = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
-        const isAllowedExt = fileExts.includes(file.originalname.split('.')[1].toLowerCase());
-        const isAllowedMimeType = file.mimetype.startsWith("image/");
-        if (isAllowedExt && isAllowedMimeType) {
-            return cb(null, true)
-        }
-        else {
-            cb('File type not allowed!')
-        }
-    }
-});
-
-const uploads = multer({
-    storage: store,
     limits: {fileSize: 1000000},
     fileFilter: function (req, file, cb) {
         const fileExts = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
