@@ -1,11 +1,12 @@
-const express   = require('express');
-const multer    = require('multer');
-const jimp      = require('jimp');
-const uuid      = require('uuid');
-const fs        = require('fs');
-const _p 		= require('./simpleasync');
-const app       = express();
-const port      = 5000;
+const express = require('express');
+const multer = require('multer');
+const jimp = require('jimp');
+const uuid = require('uuid');
+const fs = require('fs');
+const https = require('https');
+const _p = require('./simpleasync');
+const app = express();
+const port = 5000;
 
 const storage = multer.memoryStorage();
 
@@ -18,8 +19,7 @@ const upload = multer({
         const isAllowedMimeType = file.mimetype.startsWith("image/");
         if (isAllowedExt && isAllowedMimeType) {
             return cb(null, true)
-        }
-        else {
+        } else {
             cb('File type not allowed!')
         }
     }
@@ -46,7 +46,7 @@ const resize = async (req, res, next) => {
     req.body.photo = `${uuid.v4()}.${extension}`;
     const [perr, photo] = await _p(jimp.read(req.file.buffer));
     if (!perr) {
-        if( photo.bitmap.width > 400 ) {
+        if (photo.bitmap.width > 400) {
             photo.resize(400, jimp.AUTO);
             photo.quality(60);
             photo.write(`./images/${req.body.photo}`);
@@ -73,7 +73,7 @@ const resizes = async (req, res, next) => {
         req.body.photos = photoName;
         const [perr, photo] = await _p(jimp.read(p.buffer));
         if (!perr) {
-            if( photo.bitmap.width > 400 ) {
+            if (photo.bitmap.width > 400) {
                 photo.resize(400, jimp.AUTO);
                 photo.quality(60);
                 photo.write(`./images/${photourl}`);
@@ -81,8 +81,7 @@ const resizes = async (req, res, next) => {
             }
             photo.write(`./images/${photourl}`);
             next();
-        }
-        else {
+        } else {
             return reject(perr.message);
         }
     });
@@ -93,11 +92,28 @@ app.get('/', (req, res) => {
     res.json({message: 'Hello World!'});
 });
 
+//download image
+app.get('/download', (req, res) => {
+    let image_path = './images/' + Date.now() + '.jpg';
+    let url = 'https://car-images.bauersecure.com/pagefiles/86078/1752x1168/taycan_025.jpg?mode=max&quality=90&scale=down';
+    let file = fs.createWriteStream(image_path);
+    let request = https.get(url, (response) => {
+        response.pipe(file);
+    });
+    if (request) {
+        res.json({message: 'image download successfull'});
+    }
+    if (!request)
+    {
+        res.json({message: 'image download failed'});
+    }
+});
+
 //get image by id
 app.get('/:id', (req, res) => {
-    const photoFound = photoUrl.find( p => p.id ===  req.params.id);
-    if(photoFound) {
-        res.json( photoFound );
+    const photoFound = photoUrl.find(p => p.id === req.params.id);
+    if (photoFound) {
+        res.json(photoFound);
     } else {
         res.json({message: 'photo not found'});
     }
@@ -105,7 +121,7 @@ app.get('/:id', (req, res) => {
 
 // upload single image
 app.post('/profile', upload.single('photo'), resize, (req, res) => {
-    const photoExist = photoUrl.find( p => p.id ===  req.body.id);
+    const photoExist = photoUrl.find(p => p.id === req.body.id);
     if (!photoExist) {
         const data = {
             id: req.body.id,
@@ -113,18 +129,18 @@ app.post('/profile', upload.single('photo'), resize, (req, res) => {
         };
         photoUrl.push(data);
         res.send({'message': 'File uploaded successfully', data});
-    }else{
+    } else {
         const id = photoExist.id;
         const pindex = photoUrl.findIndex(p => p.id === id);
         photoUrl[pindex].photo = req.body.photo;
-        res.json({message: 'photo exist', photoUrl });
+        res.json({message: 'photo exist', photoUrl});
     }
 
 });
 
 // upload multiple image
 app.post('/photos', upload.array('photos', 2), resizes, (req, res) => {
-    const photoExist = photoUrls.find( p => p.id ===  req.body.id);
+    const photoExist = photoUrls.find(p => p.id === req.body.id);
     if (!photoExist) {
         const data = {
             id: req.body.id,
@@ -132,11 +148,11 @@ app.post('/photos', upload.array('photos', 2), resizes, (req, res) => {
         };
         photoUrls.push(data);
         res.send({'message': 'File uploaded successfully', data});
-    }else{
+    } else {
         const id = photoExist.id;
         const pindex = photoUrls.findIndex(p => p.id === id);
         photoUrls[pindex].photo = req.body.photos;
-        res.json({message: 'photo exist', photoUrls });
+        res.json({message: 'photo exist', photoUrls});
     }
 });
 
@@ -153,5 +169,6 @@ app.delete('/photo/:image', (req, res) => {
         res.send({'message': 'File delete successfully'});
     })
 });
+
 
 app.listen(port, () => console.log(`server listening on port ${port}...`));
